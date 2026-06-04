@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raúl Morán Mateo — Cybersecurity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#06080a;
+  --bg1:#0b0f12;
+  --bg2:#111518;
+  --bg3:#171c20;
+  --accent:#c8f135;
+  --accent2:#8bba1a;
+  --accent-dim:rgba(200,241,53,0.12);
+  --accent-glow:rgba(200,241,53,0.06);
+  --white:#f0f4f0;
+  --gray:#6b7a6e;
+  --gray2:#3a4440;
+  --border:rgba(200,241,53,0.1);
+  --border2:rgba(200,241,53,0.22);
+  --font:'Space Grotesk',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  background:var(--bg);
+  color:var(--white);
+  font-family:var(--font);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* noise texture */
+body::after{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:999;opacity:.4;
+}
+
+.wrap{
+  max-width:900px;margin:0 auto;
+  padding:0 1.5rem;
+}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:100;
+  padding:1rem 0;
+  background:rgba(6,8,10,0.85);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.nav-inner{
+  display:flex;justify-content:space-between;align-items:center;
+}
+.nav-logo{
+  font-family:var(--mono);font-size:13px;
+  color:var(--accent);letter-spacing:0.05em;
+}
+.nav-links{
+  display:flex;gap:1.5rem;list-style:none;
+}
+.nav-links a{
+  font-size:13px;color:var(--gray);text-decoration:none;
+  transition:color .2s;
+}
+.nav-links a:hover{color:var(--accent)}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  gap:4rem;
+  padding:6rem 0 4rem;
+}
+
+.hero-left{}
+
+.hero-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:11px;
+  color:var(--accent);letter-spacing:0.1em;
+  border:1px solid var(--border2);
+  padding:5px 12px;border-radius:2px;
+  background:var(--accent-dim);
+  margin-bottom:1.5rem;
+}
+.hero-tag::before{
+  content:'';width:6px;height:6px;
+  border-radius:50%;background:var(--accent);
+  box-shadow:0 0 8px var(--accent);
+  animation:blink 2s ease infinite;
+}
+
+.hero-name{
+  font-size:clamp(2.8rem,5vw,4.2rem);
+  font-weight:700;line-height:1.0;
+  letter-spacing:-0.03em;
+  color:var(--white);
+  margin-bottom:.5rem;
+}
+.hero-name .hl{color:var(--accent)}
+
+.hero-role{
+  font-family:var(--mono);font-size:13px;
+  color:var(--gray);letter-spacing:0.04em;
+  margin-bottom:2rem;
+}
+
+.hero-bio{
+  font-size:15px;line-height:1.75;
+  color:rgba(240,244,240,0.65);
+  margin-bottom:2.5rem;
+  max-width:420px;
+}
+.hero-bio strong{color:var(--white);font-weight:500}
+
+.hero-btns{
+  display:flex;gap:12px;flex-wrap:wrap;
+}
+
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 22px;
+  background:var(--accent);
+  color:#06080a;
+  font-family:var(--font);font-size:13px;font-weight:600;
+  text-decoration:none;border:none;cursor:pointer;
+  transition:all .2s;
+  letter-spacing:0.02em;
+}
+.btn-primary:hover{background:#d4f84a;transform:translateY(-1px)}
+
+.btn-ghost{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 22px;
+  background:transparent;
+  color:var(--white);
+  font-family:var(--font);font-size:13px;font-weight:500;
+  text-decoration:none;border:1px solid var(--border2);
+  cursor:pointer;transition:all .2s;
+}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* hero right — card */
+.hero-card{
+  background:var(--bg1);
+  border:1px solid var(--border);
+  padding:2rem;
+  position:relative;
+}
+.hero-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+}
+
+.card-photo{
+  width:72px;height:72px;border-radius:50%;
+  border:2px solid var(--border2);
+  background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:700;color:var(--accent);
+  font-family:var(--mono);
+  margin-bottom:1.25rem;
+  overflow:hidden;
+}
+.card-photo img{width:100%;height:100%;object-fit:cover}
+
+.card-name{font-size:17px;font-weight:600;margin-bottom:3px}
+.card-sub{font-size:12px;color:var(--gray);font-family:var(--mono);margin-bottom:1.25rem}
+
+.card-stats{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;margin-bottom:1.25rem;
+}
+.stat{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  padding:10px 12px;
+}
+.stat-n{font-size:22px;font-weight:700;color:var(--accent);font-family:var(--mono);line-height:1}
+.stat-l{font-size:11px;color:var(--gray);margin-top:3px}
+
+.card-certs{display:flex;flex-direction:column;gap:6px}
+.cert{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;
+  padding:7px 10px;
+  background:var(--bg2);border:1px solid var(--border);
+}
+.cert-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent);flex-shrink:0;
+}
+.cert-dot.pending{background:var(--gray2);border:1px solid var(--gray)}
+.cert-name{color:var(--white);flex:1}
+.cert-status{font-family:var(--mono);font-size:10px;color:var(--gray)}
+
+/* ── SECTION COMMON ── */
+section{padding:5rem 0}
+
+.section-eyebrow{
+  font-family:var(--mono);font-size:11px;
+  color:var(--accent);letter-spacing:0.12em;
+  text-transform:uppercase;margin-bottom:.75rem;
+}
+.section-title{
+  font-size:clamp(1.6rem,3vw,2.2rem);
+  font-weight:700;letter-spacing:-0.02em;
+  margin-bottom:3rem;
+}
+.section-title span{color:var(--accent)}
+
+/* ── TOOLS GRID ── */
+.tools-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+  gap:8px;
+}
+.tool{
+  padding:12px 14px;
+  background:var(--bg1);
+  border:1px solid var(--border);
+  font-size:13px;font-family:var(--mono);
+  color:var(--gray);
+  transition:all .2s;
+  display:flex;align-items:center;gap:8px;
+  cursor:default;
+}
+.tool::before{content:'$';color:var(--gray2);font-size:11px}
+.tool:hover{
+  border-color:var(--border2);
+  color:var(--white);
+  background:var(--bg2);
+}
+
+/* skills */
+.skills-list{
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin-top:1.5rem;
+}
+.skill-tag{
+  font-size:12px;font-family:var(--mono);
+  padding:5px 12px;
+  border:1px solid var(--border);
+  color:var(--gray);
+  background:var(--bg1);
+  transition:all .2s;
+}
+.skill-tag:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── EXPERIENCE ── */
+.exp-list{display:flex;flex-direction:column;gap:1px}
+.exp-item{
+  display:grid;
+  grid-template-columns:2px 1fr;
+  gap:0 1.5rem;
+  padding-bottom:2rem;
+}
+.exp-line{
+  background:var(--border);
+  position:relative;
+}
+.exp-line::before{
+  content:'';
+  position:absolute;top:6px;left:50%;transform:translateX(-50%);
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 12px var(--accent);
+}
+.exp-body{}
+.exp-company{
+  font-size:16px;font-weight:600;color:var(--white);
+  margin-bottom:2px;
+}
+.exp-role{
+  font-family:var(--mono);font-size:12px;color:var(--accent);
+  margin-bottom:4px;
+}
+.exp-years{font-size:12px;color:var(--gray);margin-bottom:.75rem}
+.exp-desc{
+  display:flex;flex-direction:column;gap:4px;
+}
+.exp-point{
+  font-size:13px;color:rgba(240,244,240,0.6);
+  line-height:1.5;
+  display:flex;gap:8px;
+}
+.exp-point::before{content:'—';color:var(--gray2);flex-shrink:0}
+
+/* ── LINKS SECTION ── */
+.links-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:10px;
+}
+.link-card{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px;
+  background:var(--bg1);border:1px solid var(--border);
+  text-decoration:none;color:var(--white);
+  transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.link-card::after{
+  content:'';
+  position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:var(--accent);transform:scaleX(0);
+  transition:transform .25s;transform-origin:left;
+}
+.link-card:hover{border-color:var(--border2);background:var(--bg2)}
+.link-card:hover::after{transform:scaleX(1)}
+.link-icon{
+  width:36px;height:36px;border-radius:4px;
+  background:var(--accent-dim);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.link-icon svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2}
+.link-label{font-size:14px;font-weight:500}
+.link-sub{font-size:11px;color:var(--gray);font-family:var(--mono)}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);
+  padding:2rem 0;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:1rem;
+}
+.footer-left{
+  font-family:var(--mono);font-size:11px;color:var(--gray);
+}
+.footer-right{
+  font-size:12px;color:var(--gray);
+  display:flex;align-items:center;gap:6px;
+}
+.footer-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 8px var(--accent);
+  animation:blink 2s ease infinite;
+}
+
+/* divider */
+.divider{
+  height:1px;background:var(--border);margin:0;
+}
+
+@keyframes blink{
+  0%,100%{opacity:1}50%{opacity:.3}
+}
+
+/* animations */
+.fade-up{
+  opacity:0;transform:translateY(24px);
+  animation:fadeUp .7s ease forwards;
+}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+.d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}.d4{animation-delay:.4s}
+
+@media(max-width:700px){
+  .hero{grid-template-columns:1fr;min-height:auto;padding:5rem 0 3rem;gap:2.5rem}
+  .hero-card{order:-1}
+  nav .nav-links{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="nav-inner">
+      <span class="nav-logo">raul@cybersec:~$</span>
+      <ul class="nav-links">
+        <li><a href="#tools">Tools</a></li>
+        <li><a href="#aprendiendo">En progreso</a></li>
+        <li><a href="#experiencia">Experiencia</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-tag fade-up">Open to work · Madrid</div>
+      <h1 class="hero-name fade-up d1">
+        Raúl<br>Morán<br><span class="hl">Mateo.</span>
+      </h1>
+      <p class="hero-role fade-up d2">Junior Cybersecurity Analyst · Offensive Security</p>
+      <p class="hero-bio fade-up d3">
+        7 años en entornos de seguridad crítica con <strong>Prosegur</strong> y <strong>Securitas Direct</strong>. Ahora aplicando esa mentalidad técnica al <strong>hacking ético y la seguridad ofensiva</strong>. Preparando eJPTv2 · práctica continua en laboratorios y CTF.
+      </p>
+      <div class="hero-btns fade-up d4">
+        <a href="https://raw.githubusercontent.com/ar3s4hack-ai/ar3s4hack-ai.github.io/main/cv-raul-moran.pdf" download class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar CV
+        </a>
+        <a href="https://linkedin.com/in/raulmoranmateo" target="_blank" class="btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+          LinkedIn
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-card fade-up d2">
+      <div class="card-photo">RM</div>
+      <div class="card-name">Raúl Morán Mateo</div>
+      <div class="card-sub">rawbinary@protonmail.com</div>
+
+      <div class="card-stats">
+        <div class="stat">
+          <div class="stat-n">7</div>
+          <div class="stat-l">años en seguridad</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">CCST</div>
+          <div class="stat-l">Cisco certificado</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">B2</div>
+          <div class="stat-l">inglés técnico</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">CTF</div>
+          <div class="stat-l">práctica activa</div>
+        </div>
+      </div>
+
+      <div class="card-certs">
+        <div class="cert">
+          <div class="cert-dot"></div>
+          <span class="cert-name">Cisco CCST Cybersecurity</span>
+          <span class="cert-status">✓</span>
+        </div>
+        <div class="cert">
+          <div class="cert-dot"></div>
+          <span class="cert-name">PMI</span>
+          <span class="cert-status">✓</span>
+        </div>
+        <div class="cert">
+          <div class="cert-dot pending"></div>
+          <span class="cert-name">eJPTv2</span>
+          <span class="cert-status">en curso</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TOOLS -->
+  <section id="tools">
+    <div class="section-eyebrow">// arsenal</div>
+    <h2 class="section-title">Herramientas <span>&</span> Stack</h2>
+
+    <div class="tools-grid">
+      <div class="tool">Nmap</div>
+      <div class="tool">Burp Suite</div>
+      <div class="tool">Metasploit</div>
+      <div class="tool">Wireshark</div>
+      <div class="tool">FFUF</div>
+      <div class="tool">Hydra</div>
+      <div class="tool">Netcat</div>
+      <div class="tool">Gobuster</div>
+      <div class="tool">Nikto</div>
+      <div class="tool">Linux CLI</div>
+      <div class="tool">Git/GitHub</div>
+    </div>
+
+    <div class="skills-list">
+      <span class="skill-tag">Redes TCP/IP</span>
+      <span class="skill-tag">OWASP Top 10</span>
+      <span class="skill-tag">Enumeración de servicios</span>
+      <span class="skill-tag">HTTP/HTTPS</span>
+      <span class="skill-tag">Análisis de tráfico</span>
+      <span class="skill-tag">Seguridad web</span>
+      <span class="skill-tag">Gestión de vulnerabilidades</span>
+      <span class="skill-tag">Fundamentos Linux</span>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ACTUALMENTE APRENDIENDO -->
+  <section id="aprendiendo">
+    <div class="section-eyebrow">// en progreso</div>
+    <h2 class="section-title">Actualmente <span>aprendiendo</span></h2>
+    <div class="tools-grid">
+      <div class="tool" style="border-color:rgba(200,241,53,0.25);color:var(--white)">eJPTv2</div>
+      <div class="tool" style="border-color:rgba(200,241,53,0.25);color:var(--white)">OWASP Top 10</div>
+      <div class="tool" style="border-color:rgba(200,241,53,0.25);color:var(--white)">Active Directory</div>
+      <div class="tool" style="border-color:rgba(200,241,53,0.25);color:var(--white)">Web Security</div>
+      <div class="tool" style="border-color:rgba(200,241,53,0.25);color:var(--white)">Enumeración avanzada</div>
+      <div class="tool" style="border-color:rgba(200,241,53,0.25);color:var(--white)">Dockerlabs CTF</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- EXPERIENCIA -->
+  <section id="experiencia">
+    <div class="section-eyebrow">// trayectoria</div>
+    <h2 class="section-title">Experiencia <span>profesional</span></h2>
+
+    <div class="exp-list">
+      <div class="exp-item">
+        <div class="exp-line"></div>
+        <div class="exp-body">
+          <div class="exp-company">Prosegur Alarmas</div>
+          <div class="exp-role">Técnico de Sistemas de Seguridad</div>
+          <div class="exp-years">Actualmente · 4 años</div>
+          <div class="exp-desc">
+            <div class="exp-point">Instalación y configuración de sistemas de detección de intrusión, videovigilancia y control de accesos en infraestructuras críticas</div>
+            <div class="exp-point">Evaluación de puntos de fallo en infraestructuras de seguridad física, desarrollando visión práctica de superficie de ataque y vectores de compromiso</div>
+            <div class="exp-point">Gestión autónoma de intervenciones técnicas en entornos críticos, con capacidad de diagnóstico y resolución bajo presión</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-line"></div>
+        <div class="exp-body">
+          <div class="exp-company">Securitas Direct</div>
+          <div class="exp-role">Técnico de Sistemas de Seguridad</div>
+          <div class="exp-years">3 años</div>
+          <div class="exp-desc">
+            <div class="exp-point">Configuración de sistemas de alarma con comunicación GSM/IP conectados a CRA, adquiriendo comprensión práctica de arquitecturas de comunicación y sus debilidades</div>
+            <div class="exp-point">Diagnóstico sistemático de fallos técnicos aplicando análisis causa-raíz en sistemas de alta disponibilidad</div>
+            <div class="exp-point">Trabajo bajo presión en entornos críticos, gestionando incidentes con protocolos de respuesta estandarizados</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-line"></div>
+        <div class="exp-body">
+          <div class="exp-company">Formación activa</div>
+          <div class="exp-role">Bootcamp Ciberseguridad — Neoland</div>
+          <div class="exp-years">En curso</div>
+          <div class="exp-desc">
+            <div class="exp-point">Laboratorios prácticos y retos CTF en TryHackMe</div>
+            <div class="exp-point">Prácticas en entornos vulnerables controlados</div>
+            <div class="exp-point">Preparación activa para eJPTv2</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- CONTACTO / LINKS -->
+  <section id="contacto">
+    <div class="section-eyebrow">// conecta</div>
+    <h2 class="section-title">Contacto <span>&</span> Links</h2>
+
+    <div class="links-grid">
+      <a class="link-card" href="https://linkedin.com/in/raulmoranmateo" target="_blank">
+        <div class="link-icon">
+          <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+        </div>
+        <div>
+          <div class="link-label">LinkedIn</div>
+          <div class="link-sub">raulmoranmateo</div>
+        </div>
+      </a>
+      <a class="link-card" href="mailto:rawbinary@protonmail.com">
+        <div class="link-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div>
+          <div class="link-label">Email</div>
+          <div class="link-sub">rawbinary@protonmail.com</div>
+        </div>
+      </a>
+      <a class="link-card" href="https://github.com" target="_blank">
+        <div class="link-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        </div>
+        <div>
+          <div class="link-label">GitHub</div>
+          <div class="link-sub">@rawbinary</div>
+        </div>
+      </a>
+      <a class="link-card" href="https://tryhackme.com" target="_blank">
+        <div class="link-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <div class="link-label">TryHackMe</div>
+          <div class="link-sub">perfil activo</div>
+        </div>
+      </a>
+
+      <a class="link-card" href="https://raw.githubusercontent.com/ar3s4hack-ai/ar3s4hack-ai.github.io/main/cv-raul-moran.pdf" download>
+        <div class="link-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div>
+          <div class="link-label">Descargar CV</div>
+          <div class="link-sub">cv_raul_moran.pdf</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap" style="width:100%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <span class="footer-left">© 2025 Raúl Morán Mateo · Madrid, ES</span>
+    <span class="footer-right">
+      <span class="footer-dot"></span>
+      disponible para nuevas oportunidades
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>
