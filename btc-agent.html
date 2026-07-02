@@ -226,10 +226,11 @@ footer a:hover{color:var(--accent)}
     <div class="page-eyebrow">// agente autónomo · solo bitcoin</div>
     <h1 class="page-title">BTC <span>Trading Agent</span></h1>
     <p class="page-sub">
-      Agente de señales exclusivo de <b>Bitcoin (BTC/USDT)</b> con <b>30 días de histórico de Binance</b>.
-      Detecta <b>zonas de consolidación</b> (soporte/resistencia) y sus <b>rupturas</b> confirmadas por volumen,
-      además de cruces EMA 9/21 con filtro RSI. Alertas de <b>compra</b> y <b>venta</b> en tiempo real;
-      el win rate se calcula con backtesting sobre el histórico cargado.
+      Agente de señales exclusivo de <b>Bitcoin (BTC/USDT)</b>. Detecta <b>consolidaciones</b> y
+      <b>rupturas</b> confirmadas por volumen, además de cruces EMA 9/21 con filtro RSI, y puntúa cada
+      señal con un <b>modelo de machine learning entrenado con 1 año de datos de Binance</b>
+      (reentrenado cada semana en GitHub Actions, con análisis autónomo cada 30 min y validación
+      walk-forward honesta). El win rate se calcula con backtesting sobre el histórico cargado.
     </p>
   </header>
 
@@ -324,6 +325,22 @@ footer a:hover{color:var(--accent)}
     </div>
   </div>
 
+  <!-- MODELO ML -->
+  <div class="panel" style="margin-top:12px">
+    <div class="panel-head">
+      <span class="panel-title"><b>Modelo ML</b> · entrenado con 1 año de Binance (validación walk-forward)</span>
+      <span class="panel-title" id="autoStatus"></span>
+    </div>
+    <div class="strat" style="display:grid;grid-template-columns:1fr 1fr;gap:0 2rem">
+      <div class="strat-row"><span class="strat-k">Estado</span><span class="strat-v" id="mlStatus">pendiente de entrenar</span></div>
+      <div class="strat-row"><span class="strat-k">Muestras (train/test)</span><span class="strat-v" id="mlSamples">—</span></div>
+      <div class="strat-row"><span class="strat-k">AUC test (LR / GBM)</span><span class="strat-v" id="mlAUC">—</span></div>
+      <div class="strat-row"><span class="strat-k">Acierto test vs azar</span><span class="strat-v" id="mlAcc">—</span></div>
+      <div class="strat-row"><span class="strat-k">Prob. señal actual</span><span class="strat-v" id="mlProb">—</span></div>
+      <div class="strat-row"><span class="strat-k">Qué predice</span><span class="strat-v">P(TP antes que SL) por señal</span></div>
+    </div>
+  </div>
+
   <div class="disclaimer">
     <b>Aviso:</b> proyecto educativo de Raúl Morán Mateo. El agente opera con perfil de <b>alto win rate</b>
     (take profit ajustado, stop amplio), por lo que el % de aciertos mostrado se calcula con
@@ -342,24 +359,15 @@ footer a:hover{color:var(--accent)}
 </footer>
 
 <script src="lib/lightweight-charts-4.1.3.js"></script>
+<script src="lib/agent-core.js"></script>
 <script>
 (function(){
 'use strict';
 
-/* ── config ── */
+/* ── config ── (indicadores, señales y features ML viven en lib/agent-core.js) */
 const SYMBOL = 'BTCUSDT';
 const POLL_MS = 10000;
-// TP < SL a propósito: perfil de alto win rate (muchas ganancias pequeñas, pérdidas grandes menos frecuentes)
-// count = velas que cubren 30 días (límite Binance: 1000/petición → se pagina).
-// 1D usa 200 velas: con solo 30 los indicadores no tienen histórico suficiente.
-const TF = {
-  '15m': {binance:'15m', cb:900,   secs:900,   count:2880, tp:0.006, sl:0.010},
-  '1h' : {binance:'1h',  cb:3600,  secs:3600,  count:720,  tp:0.012, sl:0.020},
-  '4h' : {binance:'4h',  cb:14400, secs:14400, count:180,  tp:0.020, sl:0.033},
-  '1d' : {binance:'1d',  cb:86400, secs:86400, count:200,  tp:0.035, sl:0.058},
-};
-// consolidación: mínimo de velas del rango y anchura máxima en múltiplos de ATR(14)
-const ZONE_MIN = 10, ZONE_WIDTH = 2.2, VOL_CONFIRM = 1.5;
+const {TF, computeSignals, backtest, featurePrep, scoreProb} = AgentCore;
 const C_BUY  = '#c8f135';
 const C_SELL = '#f0524f';
 
@@ -376,129 +384,6 @@ let lastAlertKey = localStorage.getItem('btcagent-lastAlert') || '';
 
 const $ = id => document.getElementById(id);
 const fmt = (n, d=2) => n==null ? '—' : n.toLocaleString('es-ES',{minimumFractionDigits:d, maximumFractionDigits:d});
-
-/* ── indicators ── */
-function ema(values, period){
-  const k = 2/(period+1), out = [];
-  let prev = values[0];
-  for(let i=0;i<values.length;i++){
-    prev = i===0 ? values[0] : values[i]*k + prev*(1-k);
-    out.push(prev);
-  }
-  return out;
-}
-function rsi(closes, period=14){
-  const out = new Array(closes.length).fill(null);
-  let gain=0, loss=0;
-  for(let i=1;i<closes.length;i++){
-    const d = closes[i]-closes[i-1];
-    const g = Math.max(d,0), l = Math.max(-d,0);
-    if(i<=period){
-      gain+=g; loss+=l;
-      if(i===period){ gain/=period; loss/=period; out[i]=100-100/(1+(loss===0?1e9:gain/loss)); }
-    } else {
-      gain=(gain*(period-1)+g)/period;
-      loss=(loss*(period-1)+l)/period;
-      out[i]=100-100/(1+(loss===0?1e9:gain/loss));
-    }
-  }
-  return out;
-}
-function atr(cs, period=14){
-  const out = new Array(cs.length).fill(null);
-  let prev = null;
-  for(let i=1;i<cs.length;i++){
-    const tr = Math.max(cs[i].high-cs[i].low,
-      Math.abs(cs[i].high-cs[i-1].close), Math.abs(cs[i].low-cs[i-1].close));
-    prev = i<=period ? (((prev??0)*(i-1))+tr)/i : (prev*(period-1)+tr)/period;
-    out[i] = prev;
-  }
-  return out;
-}
-
-/* ── consolidación y rupturas ──
-   Un rango nace cuando ZONE_MIN velas caben en una banda < ZONE_WIDTH×ATR(14).
-   La caja se extiende (dentro de la anchura máxima) hasta que una vela CIERRA
-   fuera → ruptura. Volumen de ruptura > VOL_CONFIRM×media del rango = confirmada.
-   Tras cada ruptura el escáner sigue buscando la siguiente consolidación. */
-function detectZones(cs, a){
-  const zones = [];
-  let i = ZONE_MIN + 14; // deja madurar el ATR
-  while(i < cs.length){
-    const s = i - ZONE_MIN + 1;
-    const win = cs.slice(s, i+1);
-    let hi = Math.max(...win.map(c=>c.high));
-    let lo = Math.min(...win.map(c=>c.low));
-    if(a[i] && (hi-lo) < ZONE_WIDTH*a[i]){
-      const maxW = ZONE_WIDTH*a[i];
-      let j = i+1, breakout = null;
-      while(j < cs.length){
-        const c = cs[j];
-        if(c.close > hi){ breakout = {i:j, dir:'up'}; break; }
-        if(c.close < lo){ breakout = {i:j, dir:'down'}; break; }
-        const nh = Math.max(hi, c.high), nl = Math.min(lo, c.low);
-        if(nh-nl < maxW){ hi = nh; lo = nl; } // absorbe mechas mientras el rango siga estrecho
-        j++;
-      }
-      const end = breakout ? breakout.i : cs.length-1;
-      const avgVol = win.reduce((t,c)=>t+(c.volume||0),0) / win.length;
-      if(breakout) breakout.strong = avgVol>0 && (cs[breakout.i].volume||0) > VOL_CONFIRM*avgVol;
-      zones.push({start:s, end, top:hi, bottom:lo, breakout, active:!breakout});
-      i = end + 1;
-    } else i++;
-  }
-  return zones;
-}
-
-/* ── signal engine (solo velas cerradas) ── */
-function computeSignals(cs){
-  const closes = cs.map(c=>c.close);
-  const e9 = ema(closes,9), e21 = ema(closes,21), r = rsi(closes,14);
-  const a = atr(cs,14);
-  const zones = detectZones(cs, a);
-  const sigs = [];
-  for(let i=30;i<cs.length;i++){
-    const up = e9[i-1]<=e21[i-1] && e9[i]>e21[i];
-    const dn = e9[i-1]>=e21[i-1] && e9[i]<e21[i];
-    if(up && r[i]!=null && r[i]>=45 && r[i]<=72) sigs.push({i, kind:'ema', type:'BUY',  price:closes[i], time:cs[i].time});
-    if(dn && r[i]!=null && r[i]<=55 && r[i]>=28) sigs.push({i, kind:'ema', type:'SELL', price:closes[i], time:cs[i].time});
-  }
-  for(const z of zones){
-    if(!z.breakout) continue;
-    const b = z.breakout;
-    sigs.push({i:b.i, kind:'break', type:b.dir==='up'?'BUY':'SELL', strong:b.strong,
-      price:cs[b.i].close, time:cs[b.i].time, zone:{top:z.top, bottom:z.bottom}});
-  }
-  sigs.sort((x,y)=>x.i-y.i || (x.kind<y.kind?-1:1));
-  return {sigs, zones, e9, e21, r, a};
-}
-
-/* ── backtest: TP/SL sobre velas posteriores ── */
-function backtest(cs, sigs, tp, sl){
-  let wins=0, losses=0;
-  const byKind = {};
-  for(const s of sigs){
-    s.outcome = 'open';
-    for(let j=s.i+1;j<cs.length;j++){
-      const c = cs[j];
-      if(s.type==='BUY'){
-        if(c.low  <= s.price*(1-sl)){ s.outcome='loss'; break; }
-        if(c.high >= s.price*(1+tp)){ s.outcome='win';  break; }
-      } else {
-        if(c.high >= s.price*(1+sl)){ s.outcome='loss'; break; }
-        if(c.low  <= s.price*(1-tp)){ s.outcome='win';  break; }
-      }
-    }
-    if(s.outcome==='win') wins++;
-    else if(s.outcome==='loss') losses++;
-    if(s.outcome!=='open'){
-      const k = byKind[s.kind] || (byKind[s.kind]={w:0,l:0});
-      if(s.outcome==='win') k.w++; else k.l++;
-    }
-  }
-  const closed = wins+losses;
-  return {wins, losses, winRate: closed ? wins/closed*100 : null, byKind};
-}
 
 /* ── data sources ── */
 async function fetchBinance(tfKey){
@@ -713,9 +598,11 @@ function renderAlerts(){
     const title = s.kind==='break'
       ? `Ruptura ${buy?'ALCISTA':'BAJISTA'}${s.strong?' · vol. alto':''}`
       : (buy?'Alerta de COMPRA':'Alerta de VENTA');
-    const meta = s.kind==='break'
+    const p = sigProb(s);
+    const mlTxt = p!=null ? ` · ML ${p}%` : '';
+    const meta = (s.kind==='break'
       ? `${fmtTime(s.time)} · salida del rango $${fmt(s.zone.bottom,0)}–$${fmt(s.zone.top,0)} · $${fmt(s.price)}`
-      : `${fmtTime(s.time)} · entrada $${fmt(s.price)}`;
+      : `${fmtTime(s.time)} · entrada $${fmt(s.price)}`) + mlTxt;
     return `<div class="alert-item" data-k="${s.time}-${s.kind}-${s.type}">
       <div class="alert-arrow ${buy?'buy':'sell'}">${s.kind==='break'?(buy?'◳':'◲'):(buy?'▲':'▼')}</div>
       <div class="alert-body">
@@ -806,11 +693,55 @@ function startTicker(){
   }catch(e){}
 }
 
+/* ── modelo ML (entrenado en GitHub Actions con 1 año de Binance) ── */
+let mlModel = null;   // data/model.json
+let probFn = null;    // señal -> probabilidad % (o null)
+function sigProb(s){ return probFn ? probFn(s) : null; }
+function updateML(){
+  const m = mlModel && mlModel.tfs && mlModel.tfs[tf];
+  if(!m){
+    probFn = null;
+    $('mlStatus').textContent = mlModel ? `sin modelo para ${tf} (hay: ${Object.keys(mlModel.tfs||{}).join(', ')})` : 'pendiente de entrenar (Actions → Entrenar modelo ML)';
+    $('mlSamples').textContent = $('mlAUC').textContent = $('mlAcc').textContent = $('mlProb').textContent = '—';
+    return;
+  }
+  const rowFn = AgentCore.featurePrep(candles);
+  probFn = s => {
+    const x = rowFn(s.i, s.type==='BUY' ? 1 : -1);
+    return x ? Math.round(scoreProb(m, x)*1000)/10 : null;
+  };
+  const mt = m.metrics;
+  $('mlStatus').textContent = `entrenado ${mlModel.trained_at.slice(0,10)} · ${mlModel.days} días`;
+  $('mlSamples').textContent = `${mt.n_train.toLocaleString('es-ES')} / ${mt.n_test.toLocaleString('es-ES')}`;
+  $('mlAUC').textContent = `${mt.auc_lr.toFixed(3)} / ${mt.auc_gbm.toFixed(3)}`;
+  $('mlAcc').textContent = `${(mt.acc_lr*100).toFixed(1)}% vs ${(mt.base_rate*100).toFixed(1)}%`;
+  const last = signals[signals.length-1];
+  const p = last ? sigProb(last) : null;
+  $('mlProb').textContent = p!=null ? `${p}% (${last.type==='BUY'?'compra':'venta'} ${tf})` : '—';
+  $('mlProb').style.color = p!=null && p>=55 ? 'var(--accent)' : '';
+}
+async function loadML(){
+  try{
+    const res = await fetch('data/model.json?t='+Date.now());
+    if(res.ok) mlModel = await res.json();
+  }catch(e){}
+  try{
+    const res = await fetch('data/signals.json?t='+Date.now());
+    if(res.ok){
+      const s = await res.json();
+      const at = new Date(s.generated_at);
+      $('autoStatus').textContent = `🤖 análisis autónomo: ${at.toLocaleString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
+    }
+  }catch(e){}
+  if(candles.length){ updateML(); renderAlerts(); }
+}
+
 /* ── main pipeline ── */
 function recompute(){
   const analysis = computeSignals(candles);
   signals = analysis.sigs;
   const bt = backtest(candles, signals, TF[tf].tp, TF[tf].sl);
+  updateML();
   renderChart(analysis);
   updateStats(analysis, bt);
   renderAlerts();
@@ -868,13 +799,14 @@ $('notifBtn').addEventListener('click', async ()=>{
 });
 
 /* ── boot ── */
-if(typeof LightweightCharts==='undefined'){
-  $('chartMsg').textContent='error: no se pudo cargar la librería de gráficos';
+if(typeof LightweightCharts==='undefined' || typeof AgentCore==='undefined'){
+  $('chartMsg').textContent='error: no se pudieron cargar las librerías del agente';
   return;
 }
 buildChart();
-reload();
+reload().then(loadML);
 pollTimer = setInterval(poll, POLL_MS);
+setInterval(loadML, 5*60*1000); // el agente autónomo actualiza data/ cada 30 min
 
 })();
 </script>

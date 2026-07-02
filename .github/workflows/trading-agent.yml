@@ -1,0 +1,36 @@
+name: Agente autónomo (análisis + alertas)
+
+on:
+  workflow_dispatch: {}        # lanzable a mano desde la pestaña Actions
+  schedule:
+    - cron: '*/30 * * * *'     # cada 30 min (GitHub puede retrasarlo unos minutos)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trading-agent
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Analizar mercado y generar señales
+        env:
+          # Opcionales: crea estos secrets en Settings -> Secrets and variables
+          # -> Actions para recibir las alertas en Telegram. Sin ellos el agente
+          # sigue funcionando y solo actualiza el dashboard.
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node agent/run.js
+
+      - name: Publicar signals.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/signals.json
+          git diff --cached --quiet || git commit -m "chore: actualizar señales del agente [skip ci]"
+          git push
