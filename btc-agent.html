@@ -274,7 +274,7 @@ footer a:hover{color:var(--accent)}
   <!-- CHART -->
   <div class="panel">
     <div class="panel-head">
-      <span class="panel-title"><b>BTC/USDT</b> · velas <span id="tfTitle">1h</span> · Binance</span>
+      <span class="panel-title"><b>BTC/USDT</b> · velas <span id="tfTitle">1h</span> · <span id="srcLabel">Binance</span></span>
       <div class="legend">
         <span><span class="lk" style="background:#e8b93c"></span>EMA 9</span>
         <span><span class="lk" style="background:#5aa7e8"></span>EMA 21</span>
@@ -359,6 +359,8 @@ let signals = [];        // {i, type, price, time, outcome}
 let chart, candleSeries, ema9Series, ema21Series;
 let pollTimer = null;
 let demoMode = false;
+let dataSource = 'binance'; // 'binance' | 'coinbase' | 'demo'
+let ws = null, demoTicker = null;
 let lastAlertKey = localStorage.getItem('btcagent-lastAlert') || '';
 
 const $ = id => document.getElementById(id);
@@ -461,9 +463,23 @@ function demoData(tfKey){
   return out;
 }
 async function loadCandles(tfKey){
-  try{ demoMode=false; return await fetchBinance(tfKey); }catch(e){}
-  try{ demoMode=false; return await fetchCoinbase(tfKey); }catch(e){}
-  demoMode=true; return demoData(tfKey);
+  try{ const c=await fetchBinance(tfKey);  demoMode=false; dataSource='binance';  return c; }catch(e){}
+  try{ const c=await fetchCoinbase(tfKey); demoMode=false; dataSource='coinbase'; return c; }catch(e){}
+  demoMode=true; dataSource='demo'; return demoData(tfKey);
+}
+async function fetchLatest(tfKey){
+  if(dataSource==='binance'){
+    const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${TF[tfKey].binance}&limit=2`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('binance '+res.status);
+    const rows = await res.json();
+    return rows.map(r=>({time:Math.floor(r[0]/1000), open:+r[1], high:+r[2], low:+r[3], close:+r[4]}));
+  }
+  if(dataSource==='coinbase'){
+    const all = await fetchCoinbase(tfKey);
+    return all.slice(-2);
+  }
+  return null;
 }
 
 /* ── chart ── */
@@ -518,12 +534,16 @@ function renderChart(analysis){
 function fmtTime(unix){
   return new Date(unix*1000).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 }
+function setPrice(price){
+  const prev = candles[candles.length-2];
+  $('price').textContent = '$'+fmt(price);
+  if(!prev) return;
+  const d = (price-prev.close)/prev.close*100;
+  $('priceDelta').innerHTML = `<span class="${d>=0?'up':'dn'}">${d>=0?'▲':'▼'} ${fmt(Math.abs(d))}%</span> vs vela anterior`;
+}
 function updateStats(analysis, bt){
   const last = candles[candles.length-1];
-  const prev = candles[candles.length-2];
-  $('price').textContent = '$'+fmt(last.close);
-  const d = (last.close-prev.close)/prev.close*100;
-  $('priceDelta').innerHTML = `<span class="${d>=0?'up':'dn'}">${d>=0?'▲':'▼'} ${fmt(Math.abs(d))}%</span> vs vela anterior`;
+  setPrice(last.close);
 
   const lastSig = signals[signals.length-1];
   const chip = $('sigChip');
@@ -609,6 +629,45 @@ function checkNewAlert(){
   if(row) row.classList.add('new');
 }
 
+/* ── precio en directo (websocket con reconexión) ── */
+function onTick(price){
+  if(!candles.length || !isFinite(price)) return;
+  const last = candles[candles.length-1];
+  last.close = price;
+  if(price > last.high) last.high = price;
+  if(price < last.low)  last.low  = price;
+  candleSeries.update(last);
+  setPrice(price);
+}
+function stopTicker(){
+  if(ws){ ws.onclose=null; try{ws.close();}catch(e){} ws=null; }
+  if(demoTicker){ clearInterval(demoTicker); demoTicker=null; }
+}
+function startTicker(){
+  stopTicker();
+  if(dataSource==='demo'){
+    // en demo, simula ticks para que la UI se vea viva
+    demoTicker = setInterval(()=>{
+      const last = candles[candles.length-1];
+      onTick(last.close * (1+(Math.random()-0.5)*0.0008));
+    }, 3000);
+    return;
+  }
+  try{
+    if(dataSource==='binance'){
+      ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@miniTicker');
+      ws.onmessage = e=>{ try{ onTick(+JSON.parse(e.data).c); }catch(err){} };
+    } else {
+      ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+      ws.onopen = ()=>ws.send(JSON.stringify({type:'subscribe', product_ids:['BTC-USD'], channels:['ticker']}));
+      ws.onmessage = e=>{ try{ const d=JSON.parse(e.data); if(d.type==='ticker') onTick(+d.price); }catch(err){} };
+    }
+    // si se corta, reintenta a los 5 s (el sondeo de 10 s sigue de respaldo)
+    ws.onclose = ()=>{ ws=null; setTimeout(()=>{ if(!ws && !demoTicker) startTicker(); }, 5000); };
+    ws.onerror = ()=>{ try{ws.close();}catch(e){} };
+  }catch(e){}
+}
+
 /* ── main pipeline ── */
 function recompute(){
   const analysis = computeSignals(candles);
@@ -629,17 +688,16 @@ async function reload(){
   const badge = $('liveBadge');
   badge.textContent = demoMode ? 'MODO DEMO' : 'EN VIVO';
   badge.classList.toggle('off', demoMode);
+  $('srcLabel').textContent = {binance:'Binance', coinbase:'Coinbase', demo:'demo'}[dataSource];
   recompute();
+  startTicker();
 }
 
 async function poll(){
   if(demoMode) return;
   try{
-    const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${TF[tf].binance}&limit=2`;
-    const res = await fetch(url);
-    if(!res.ok) return;
-    const rows = await res.json();
-    const fresh = rows.map(r=>({time:Math.floor(r[0]/1000), open:+r[1], high:+r[2], low:+r[3], close:+r[4]}));
+    const fresh = await fetchLatest(tf);
+    if(!fresh || !fresh.length) return;
     let changed=false;
     for(const f of fresh){
       const idx = candles.findIndex(c=>c.time===f.time);
