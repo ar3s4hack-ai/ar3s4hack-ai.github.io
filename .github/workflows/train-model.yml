@@ -1,0 +1,40 @@
+name: Entrenar modelo ML (1 año Binance)
+
+on:
+  workflow_dispatch: {}        # lanzable a mano desde la pestaña Actions
+  schedule:
+    - cron: '17 3 * * 1'       # reentrena cada lunes de madrugada (UTC)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: train-model
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias
+        run: pip install --quiet numpy scikit-learn
+
+      - name: Descargar 1 año de velas de Binance
+        run: python agent/fetch_data.py
+
+      - name: Entrenar y exportar modelo
+        run: python agent/train.py
+
+      - name: Publicar datos y modelo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "chore: reentrenar modelo ML con datos frescos [skip ci]"
+          git push
