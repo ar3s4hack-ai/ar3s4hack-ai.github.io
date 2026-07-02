@@ -1,0 +1,156 @@
+{
+ "generated_at": "2026-07-02T15:47:00.726Z",
+ "symbol": "BTCUSDT",
+ "tfs": {
+  "1h": {
+   "price": 61696.61,
+   "candles": 719,
+   "state": "BUY",
+   "zone": null,
+   "winRate": 60,
+   "byKind": {
+    "break": {
+     "w": 15,
+     "l": 11
+    },
+    "ema": {
+     "w": 15,
+     "l": 9
+    }
+   },
+   "signals": [
+    {
+     "time": 1782738000,
+     "kind": "ema",
+     "type": "SELL",
+     "price": 59580,
+     "strong": false,
+     "zone": null,
+     "outcome": "win",
+     "prob": 61.9
+    },
+    {
+     "time": 1782752400,
+     "kind": "ema",
+     "type": "BUY",
+     "price": 60413.99,
+     "strong": false,
+     "zone": null,
+     "outcome": "loss",
+     "prob": 63.5
+    },
+    {
+     "time": 1782788400,
+     "kind": "ema",
+     "type": "SELL",
+     "price": 59627.48,
+     "strong": false,
+     "zone": null,
+     "outcome": "win",
+     "prob": 62.2
+    },
+    {
+     "time": 1782871200,
+     "kind": "break",
+     "type": "BUY",
+     "price": 59085,
+     "strong": false,
+     "zone": {
+      "top": 58874.99,
+      "bottom": 58201
+     },
+     "outcome": "win",
+     "prob": 63.5
+    },
+    {
+     "time": 1782914400,
+     "kind": "ema",
+     "type": "BUY",
+     "price": 59542,
+     "strong": false,
+     "zone": null,
+     "outcome": "win",
+     "prob": 63
+    }
+   ]
+  },
+  "4h": {
+   "price": 61358.01,
+   "candles": 179,
+   "state": "BUY",
+   "zone": null,
+   "winRate": 66.7,
+   "byKind": {
+    "ema": {
+     "w": 5,
+     "l": 3
+    },
+    "break": {
+     "w": 5,
+     "l": 2
+    }
+   },
+   "signals": [
+    {
+     "time": 1782115200,
+     "kind": "break",
+     "type": "BUY",
+     "price": 64657.22,
+     "strong": false,
+     "zone": {
+      "top": 64588,
+      "bottom": 63184.21
+     },
+     "outcome": "loss",
+     "prob": 56
+    },
+    {
+     "time": 1782187200,
+     "kind": "ema",
+     "type": "SELL",
+     "price": 62886.03,
+     "strong": false,
+     "zone": null,
+     "outcome": "win",
+     "prob": 65.7
+    },
+    {
+     "time": 1782662400,
+     "kind": "break",
+     "type": "SELL",
+     "price": 59481.79,
+     "strong": false,
+     "zone": {
+      "top": 60941.17,
+      "bottom": 59556
+     },
+     "outcome": "win",
+     "prob": 59.7
+    },
+    {
+     "time": 1782820800,
+     "kind": "break",
+     "type": "SELL",
+     "price": 58381.99,
+     "strong": true,
+     "zone": {
+      "top": 60780.57,
+      "bottom": 58900.01
+     },
+     "outcome": "loss",
+     "prob": 66.8
+    },
+    {
+     "time": 1782950400,
+     "kind": "ema",
+     "type": "BUY",
+     "price": 61058,
+     "strong": false,
+     "zone": null,
+     "outcome": "open",
+     "prob": 57.1
+    }
+   ]
+  }
+ }
+}
